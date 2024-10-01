@@ -8,7 +8,7 @@ services:
     image: traefik:2.9.8
     command:
       - --api.insecure=true
-      - --providers.docker=true
+      - --providers.docker=truedo
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
     ports:
@@ -28,8 +28,12 @@ services:
       # dockerfile: src/main/docker/Dockerfile.native
       dockerfile: src/main/docker/Dockerfile.jvm
     image: dio/election-management:${TAG:-1.0.0}
+    environment:
+      - QUARKUS_DATASOURCE_USERNAME=election-management-user
+      - QUARKUS_DATASOURCE_PASSWORD=election-management-password
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:mariadb://database:3360/election-management
     labels:
-      - traefik.http.routers.election-management.rule=Host(`vote.dio.localhost`) && PathPrefix(`/api`)
+      - traefik.http.routers.election-management.rule=Host(`localhost`) && PathPrefix(`/api`)
       - traefik.http.routers.election-management.entrypoints=web
 
   voting-app:
@@ -42,7 +46,7 @@ services:
       dockerfile: src/main/docker/Dockerfile.jvm
     image: dio/voting-app:${TAG:-1.0.0}
     labels:
-      - traefik.http.routers.voting-app.rule=Host(`vote.dio.localhost`) && PathPrefix(`/api/voting`)
+      - traefik.http.routers.voting-app.rule=Host(`localhost`) && PathPrefix(`/api/voting`)
       - traefik.http.routers.voting-app.entrypoints=web
 
   result-app:
@@ -55,7 +59,7 @@ services:
       dockerfile: src/main/docker/Dockerfile.jvm
     image: dio/result-app:${TAG:-1.0.0}
     labels:
-      - traefik.http.routers.result-app.rule=Host(`vote.dio.localhost`) && Path(`/`)
+      - traefik.http.routers.result-app.rule=Host(`localhost`) && Path(`/`)
       - traefik.http.routers.result-app.entrypoints=web
 
   # DATABASE - https://quarkus.io/guides/datasource
@@ -64,6 +68,9 @@ services:
   database:
     image: mariadb:10.11.2
     environment:
+      - QUARKUS_DATASOURCE_USERNAME=election-management-user
+      - QUARKUS_DATASOURCE_PASSWORD=election-management-password
+      - QUARKUS_DATASOURCE_JDBC_URL=jdbc:mariadb://database:3306/election-management
       - MARIADB_ROOT_PASSWORD=root
 
   # CACHING - https://quarkus.io/guides/redis
@@ -91,7 +98,7 @@ services:
 
   ## https://www.graylog.org/
   ### Graylog web console (System → Input → Select GELF UDP)
-  ### curl -H "Content-Type: application/json" -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "X-Requested-By: curl" -X POST -v -d '{"title":"udp input","configuration":{"recv_buffer_size":262144,"bind_address":"0.0.0.0","port":12201,"decompress_size_limit":8388608},"type":"org.graylog2.inputs.gelf.udp.GELFUDPInput","global":true}' http://logging.private.dio.localhost/api/system/inputs
+    ### curl -H "Content-Type: application/json" -H "Authorization: Basic YWRtaW46YWRtaW4=" -H "X-Requested-By: curl" -X POST -v -d '{"title":"udp input","configuration":{"recv_buffer_size":262144,"bind_address":"0.0.0.0","port":12201,"decompress_size_limit":8388608},"type":"org.graylog2.inputs.gelf.udp.GELFUDPInput","global":true}' http://logging.private.dio.localhost/api/system/inputs
   graylog:
     image: graylog/graylog:5.0.5
     environment:
@@ -108,10 +115,12 @@ services:
         condition: service_started
     labels:
       - traefik.enable=true
-      - traefik.http.routers.graylog.rule=Host(`logging.private.dio.localhost`)
+      - traefik.http.routers.graylog.rule=Host(`localhost`)
       - traefik.http.routers.graylog.entrypoints=web
       - traefik.http.routers.graylog.service=graylog
       - traefik.http.services.graylog.loadbalancer.server.port=9000
+    ports:
+      - "9000:9000"
 
   # OPENTELEMETRY - https://quarkus.io/guides/opentelemetry
 
@@ -123,7 +132,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.middlewares.admin-admin-auth.basicauth.users=admin:$$2y$$05$$B3PS97vYDsx6Hk4e/F8bSOGdB2uq.oabTU7SbMdjJKxdAeKKI8pTO
-      - traefik.http.routers.jaeger.rule=Host(`telemetry.private.dio.localhost`)
+      - traefik.http.routers.jaeger.rule=Host(`localhost`)
       - traefik.http.routers.jaeger.entrypoints=web
       - traefik.http.routers.jaeger.service=jaeger
       - traefik.http.routers.jaeger.middlewares=admin-admin-auth@docker
